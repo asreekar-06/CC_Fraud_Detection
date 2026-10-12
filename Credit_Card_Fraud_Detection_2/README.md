@@ -1,6 +1,8 @@
-# Credit Card Fraud Detection — Kartik2112 dataset
+# Credit Card Fraud Detection — 
 
-This is the same overall project flow as the supplied Claude project, adapted to the readable Kartik2112 dataset:
+Live Demo link : https://ccfrauddetection-1v0t379bt-cc-fraud-detection.vercel.app/
+
+This is the same overall project flow as the supplied Claude project, adapted to the readable new dataset:
 - use `is_fraud` as the target;
 - use `amt`, `category`, and timestamp-derived `hour` and `day_of_week`;
 - compare Logistic Regression, Linear SVM, Random Forest, and XGBoost;
@@ -12,7 +14,7 @@ This is the same overall project flow as the supplied Claude project, adapted to
 The Kaggle dataset is simulated transaction data, not real bank records.
 
 ## 1. Download the dataset
-Download the Kartik2112 dataset from https://www.kaggle.com/datasets/kartik2112/fraud-detection.
+Download the new dataset from https://www.kaggle.com/datasets/kartik2112/fraud-detection.
 Upload `fraudTrain.csv` and `fraudTest.csv` into the root of a Google Colab session. The training script expects those filenames and the columns `trans_date_trans_time`, `category`, `amt`, and `is_fraud`.
 
 ## 2. Train in Google Colab
