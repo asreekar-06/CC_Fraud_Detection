@@ -1,0 +1,8 @@
+[project]
+name = "credit-card-fraud-detection"
+version = "0.2.0"
+requires-python = ">=3.9"
+dependencies = ["scikit-learn==1.6.1", "pandas", "numpy", "joblib"]
+
+[tool.vercel]
+entrypoint = "api.predict:handler"
