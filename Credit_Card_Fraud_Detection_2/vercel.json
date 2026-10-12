@@ -1,3 +1,4 @@
+
 {
   "version": 2,
   "builds": [
@@ -12,17 +13,12 @@
   ],
   "routes": [
     {
-      "src": "/api/(.*)",
-      "dest": "/api/predict.py"
+      "src": "/api/predict",
+      "dest": "api/predict.py"
     },
     {
       "src": "/(.*)",
-      "dest": "/public/$1"
+      "dest": "public/$1"
     }
-  ],
-  "functions": {
-    "api/predict.py": {
-      "includeFiles": "model/**"
-    }
-  }
+  ]
 }
