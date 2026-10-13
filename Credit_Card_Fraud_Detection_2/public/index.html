@@ -118,7 +118,7 @@ th{color:var(--mut)}
 <section id="bulk">
 <div class="box">
 <h2>Bulk CSV analysis</h2>
-<p class="mut">Upload a CSV containing amt, category, hour, and day_of_week. The API may also support deriving these fields from a timestamp.</p>
+<p class="mut">Upload a CSV containing amt, category, hour, and day_of_week. A timestamp column can also supply the time and day if supported by the API.</p>
 <input id="file" type="file" accept=".csv">
 <button class="primary" id="bulkbtn">Analyze CSV</button>
 <span id="berr" class="err"></span>
@@ -233,6 +233,131 @@ function pct(p) {
   return (Number(p) * 100).toFixed(2) + "%";
 }
 
+/* NORMALIZE CSV HEADERS AND LOOK UP VALUES SAFELY */
+function normalizeKey(key) {
+  return String(key ?? "")
+    .replace(/^\uFEFF/, "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, "_");
+}
+
+function getField(row, names) {
+  const keys = Object.keys(row);
+  for (const name of names) {
+    const wanted = normalizeKey(name);
+    const found = keys.find(k => normalizeKey(k) === wanted);
+    if (found !== undefined && row[found] !== undefined &&
+        String(row[found]).trim() !== "") {
+      return String(row[found]).trim();
+    }
+  }
+  return "";
+}
+
+function parseTimestamp(value) {
+  if (!value) return null;
+  const text = String(value).trim();
+
+  // Handles common CSV formats such as:
+  // 2020-06-21 14:35:00
+  // 2020-06-21T14:35:00
+  // 06/21/2020 14:35
+  const match = text.match(
+    /(?:^|\s|T)(\d{1,2}):(\d{2})(?::\d{2}(?:\.\d+)?)?(?:\s|$)/
+  );
+
+  if (match) {
+    const hour = Number(match[1]);
+    const minute = Number(match[2]);
+    if (hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59) {
+      return {hour, minute};
+    }
+  }
+
+  const date = new Date(text);
+  if (!Number.isNaN(date.getTime())) {
+    return {hour:date.getHours(), minute:date.getMinutes()};
+  }
+  return null;
+}
+
+function getTransactionTime(row) {
+  let hourText = getField(row, [
+    "hour", "time_hour", "transaction_hour"
+  ]);
+  let minuteText = getField(row, [
+    "minute", "minutes", "time_minute", "transaction_minute"
+  ]);
+
+  const timestampText = getField(row, [
+    "trans_date_trans_time",
+    "transaction_timestamp",
+    "transaction_time",
+    "timestamp",
+    "datetime",
+    "date_time",
+    "date"
+  ]);
+
+  const parsed = parseTimestamp(timestampText);
+
+  let hour = hourText !== "" && Number.isFinite(Number(hourText))
+    ? Number(hourText) : null;
+  let minute = minuteText !== "" && Number.isFinite(Number(minuteText))
+    ? Number(minuteText) : null;
+
+  if (parsed) {
+    if (hour === null) hour = parsed.hour;
+    if (minute === null) minute = parsed.minute;
+  }
+
+  if (hour === null || hour < 0 || hour > 23) hour = 14;
+  if (minute === null || minute < 0 || minute > 59) minute = 0;
+
+  return {hour:Math.floor(hour), minute:Math.floor(minute)};
+}
+
+function getDayValue(row) {
+  const value = getField(row, [
+    "day_of_week", "dayofweek", "day", "weekday", "transaction_day"
+  ]);
+
+  if (value !== "") {
+    const numeric = Number(value);
+    if (Number.isFinite(numeric) && numeric >= 0 && numeric <= 6) {
+      return Math.floor(numeric);
+    }
+
+    const names = [
+      "monday", "tuesday", "wednesday", "thursday",
+      "friday", "saturday", "sunday"
+    ];
+    const index = names.indexOf(value.toLowerCase());
+    if (index !== -1) return index;
+  }
+
+  const timestampText = getField(row, [
+    "trans_date_trans_time",
+    "transaction_timestamp",
+    "transaction_time",
+    "timestamp",
+    "datetime",
+    "date_time",
+    "date"
+  ]);
+
+  if (timestampText) {
+    const date = new Date(timestampText);
+    if (!Number.isNaN(date.getTime())) {
+      // JavaScript: Sunday=0; project convention: Monday=0.
+      return (date.getDay() + 6) % 7;
+    }
+  }
+
+  return 2;
+}
+
 for (let h = 0; h < 24; h++) {
   $("timeHour").add(new Option(String(h).padStart(2,"0"), String(h)));
 }
@@ -260,8 +385,8 @@ async function predict(rows) {
   });
   const data = await response.json();
   if (!response.ok) throw Error(data.error || "Prediction failed");
-  LOW = data.low;
-  HIGH = data.high;
+  LOW = data.low ?? LOW;
+  HIGH = data.high ?? HIGH;
   return data.results;
 }
 
@@ -308,48 +433,91 @@ $("check").onclick = async () => {
 
 /* CSV PARSER */
 function parseCSV(text) {
-  const lines = text.replace(/^\uFEFF/,"").trim().split(/\r?\n/);
+  const cleanText = text.replace(/^\uFEFF/, "").trim();
+  if (!cleanText) throw Error("CSV is empty.");
+
+  const lines = cleanText.split(/\r?\n/);
   if (lines.length < 2) throw Error("CSV contains no transaction rows.");
 
   const parseLine = line => {
     const result = [];
     let value = "", quoted = false;
-    for (let i=0; i<line.length; i++) {
+
+    for (let i = 0; i < line.length; i++) {
       const c = line[i];
+
       if (c === '"' && line[i+1] === '"') {
-        value += '"'; i++;
+        value += '"';
+        i++;
       } else if (c === '"') {
         quoted = !quoted;
       } else if (c === "," && !quoted) {
-        result.push(value); value = "";
+        result.push(value.trim());
+        value = "";
       } else {
         value += c;
       }
     }
-    result.push(value);
+
+    result.push(value.trim());
     return result;
   };
 
-  const headers = parseLine(lines[0]).map(h => h.trim());
+  const headers = parseLine(lines[0]).map(h => h.replace(/^\uFEFF/, "").trim());
 
-  return lines.slice(1).filter(line => line.trim()).map(line => {
-    const values = parseLine(line);
-    const row = {};
-    headers.forEach((h,i) => row[h] = values[i] ?? "");
-    return row;
-  });
+  return lines.slice(1)
+    .filter(line => line.trim())
+    .map(line => {
+      const values = parseLine(line);
+      const row = {};
+      headers.forEach((h,i) => row[h] = values[i] ?? "");
+      return row;
+    });
 }
 
-/* RANDOM SAMPLE LOADER: uses every row in sample_transactions.csv */
+/* RANDOM SAMPLE LOADER */
 let sampleRows = [];
-let previousSampleIndex = -1;
+let sampleIndex = 0;
 let sampleLoading = false;
+
+function shuffleSamples() {
+  for (let i = sampleRows.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [sampleRows[i], sampleRows[j]] = [sampleRows[j], sampleRows[i]];
+  }
+  sampleIndex = 0;
+}
+
+function sampleToForm(row) {
+  const amount = getField(row, ["amt", "amount", "transaction_amount"]);
+  const category = getField(row, ["category", "transaction_category"]);
+  const time = getTransactionTime(row);
+  const day = getDayValue(row);
+
+  if (amount !== "") {
+    const n = Number(amount);
+    if (Number.isFinite(n)) $("amt").value = n;
+  }
+
+  if (category !== "") {
+    const select = $("category");
+    if (![...select.options].some(o => o.value === category)) {
+      select.add(new Option(category, category));
+    }
+    select.value = category;
+  }
+
+  $("timeHour").value = String(time.hour);
+  $("timeMinute").value = String(time.minute);
+  $("day").value = String(day);
+}
 
 $("sample").textContent = "Load sample";
 
 $("sample").onclick = async () => {
   const btn = $("sample");
   const msg = $("serr");
+
   if (sampleLoading) return;
 
   sampleLoading = true;
@@ -367,70 +535,33 @@ $("sample").onclick = async () => {
         throw Error("Could not load sample_transactions.csv from public/.");
       }
 
-      sampleRows = parseCSV(await response.text());
+      const csvText = await response.text();
+      sampleRows = parseCSV(csvText);
 
       if (!sampleRows.length) {
         throw Error("Sample CSV has no data rows.");
       }
 
-      // Randomly shuffle all rows, then reshuffle when exhausted.
-      // Every row is selected once per cycle before the next cycle.
-      sampleRows = sampleRows.map((row,index) => ({row,index}));
+      // Validate that the CSV has usable transaction features.
+      const first = sampleRows[0];
+      if (
+        getField(first, ["amt","amount","transaction_amount"]) === "" ||
+        getField(first, ["category","transaction_category"]) === ""
+      ) {
+        throw Error("Check sample_transactions.csv: it must contain amount and category columns.");
+      }
+
       shuffleSamples();
     }
 
-    if (sampleRows.length === 0) {
-      throw Error("No sample transactions are available.");
+    if (sampleIndex >= sampleRows.length) {
+      shuffleSamples();
     }
 
-    if (previousSampleIndex >= sampleRows.length) {
-      previousSampleIndex = -1;
-    }
+    const selectedRow = sampleRows[sampleIndex];
+    sampleIndex++;
 
-    // Use a shuffled cycle so all 40 rows are used before repeating.
-    let selected;
-    if (previousSampleIndex === -1) {
-      selected = 0;
-    } else {
-      selected = previousSampleIndex + 1;
-      if (selected >= sampleRows.length) {
-        shuffleSamples();
-        selected = 0;
-      }
-    }
-
-    previousSampleIndex = selected;
-    const s = sampleRows[selected].row;
-
-    const amount = s.amt ?? s.Amount ?? s.amount;
-    const category = s.category ?? s.Category;
-    const hour = s.hour ?? s.Hour ?? 0;
-    const minute = s.minute ?? s.Minute ?? 0;
-    const day = s.day_of_week ?? s.Day_of_Week ?? s.day ?? 0;
-
-    if (amount !== undefined && amount !== "") {
-      $("amt").value = amount;
-    }
-
-    if (category) {
-      const select = $("category");
-      if (![...select.options].some(o => o.value === String(category))) {
-        select.add(new Option(String(category),String(category)));
-      }
-      select.value = String(category);
-    }
-
-    $("timeHour").value = String(
-      Math.max(0,Math.min(23,Number(hour)||0))
-    ).padStart(2,"0");
-
-    $("timeMinute").value = String(
-      Math.max(0,Math.min(59,Number(minute)||0))
-    ).padStart(2,"0");
-
-    $("day").value = String(
-      Math.max(0,Math.min(6,Number(day)||0))
-    );
+    sampleToForm(selectedRow);
   } catch (e) {
     msg.textContent = e.message;
   } finally {
@@ -440,18 +571,11 @@ $("sample").onclick = async () => {
   }
 };
 
-function shuffleSamples() {
-  for (let i=sampleRows.length-1; i>0; i--) {
-    const j = Math.floor(Math.random()*(i+1));
-    [sampleRows[i],sampleRows[j]] = [sampleRows[j],sampleRows[i]];
-  }
-  previousSampleIndex = -1;
-}
-
 /* BULK CSV ANALYSIS */
 $("bulkbtn").onclick = async () => {
   const file = $("file").files[0];
   $("berr").textContent = "";
+
   if (!file) {
     $("berr").textContent = "Choose a CSV file.";
     return;
@@ -465,15 +589,19 @@ $("bulkbtn").onclick = async () => {
     const rows = parseCSV(await file.text());
     const results = [];
 
-    for (let i=0; i<rows.length; i+=1000) {
-      results.push(...await predict(rows.slice(i,i+1000)));
+    for (let i = 0; i < rows.length; i += 1000) {
+      results.push(...await predict(rows.slice(i, i + 1000)));
     }
 
     if (results.length !== rows.length) {
       throw Error("The API returned an unexpected number of results.");
     }
 
-    lastResults = rows.map((row,i) => ({row,result:results[i],index:i+1}));
+    lastResults = rows.map((row,i) => ({
+      row,
+      result:results[i],
+      index:i+1
+    }));
 
     const counts = {fraud:0,genuine:0,review:0};
     results.forEach(r => {
@@ -488,8 +616,8 @@ $("bulkbtn").onclick = async () => {
     ].map(x => `<div><b>${x[1]}</b>${x[0]}</div>`).join("");
 
     const total = rows.length;
-    const genuineDeg = total ? counts.genuine/total*360 : 0;
-    const fraudDeg = total ? (counts.genuine+counts.fraud)/total*360 : 0;
+    const genuineDeg = total ? counts.genuine / total * 360 : 0;
+    const fraudDeg = total ? (counts.genuine + counts.fraud) / total * 360 : 0;
 
     $("pieChart").style.background = total
       ? `conic-gradient(var(--ok) 0deg ${genuineDeg}deg,var(--fraud) ${genuineDeg}deg ${fraudDeg}deg,var(--review) ${fraudDeg}deg 360deg)`
@@ -503,125 +631,27 @@ $("bulkbtn").onclick = async () => {
       ["Likely fraud",counts.fraud,"var(--fraud)"],
       ["Needs review",counts.review,"var(--review)"]
     ].map(([name,n,color]) =>
-      `<div class="legend-item"><span class="legend-dot" style="background:${color}"></span><span>${name}</span><strong>${n} · ${total?Math.round(n/total*100):0}%</strong></div>`
+      `<div class="legend-item"><span class="legend-dot" style="background:${color}"></span><span>${name}</span><strong>${n} · ${total ? Math.round(n/total*100) : 0}%</strong></div>`
     ).join("");
 
     $("btb").innerHTML = lastResults
       .filter(x => x.result.decision !== "genuine")
-      .sort((a,b) => b.result.probability-a.result.probability)
+      .sort((a,b) => b.result.probability - a.result.probability)
       .slice(0,100)
-      .map(x =>
-        `<tr><td>${x.index}</td><td>${x.row.amt??x.row.Amount??x.row.amount??""}</td><td>${x.row.category??""}</td><td>${pct(x.result.probability)}</td><td><span class="tag ${x.result.decision}">${label(x.result.decision)}</span></td></tr>`
-      ).join("") || '<tr><td colspan="5">Nothing flagged.</td></tr>';
+      .map(x => {
+        const amount = getField(x.row, ["amt","amount","transaction_amount"]);
+        const category = getField(x.row, ["category","transaction_category"]);
+        return `<tr><td>${x.index}</td><td>${amount}</td><td>${category}</td><td>${pct(x.result.probability)}</td><td><span class="tag ${x.result.decision}">${label(x.result.decision)}</span></td></tr>`;
+      }).join("") || '<tr><td colspan="5">Nothing flagged.</td></tr>';
 
-    lastResults.forEach(x => addReview(file.name+" row "+x.index,x.row,x.result));
+    lastResults.forEach(x =>
+      addReview(file.name + " row " + x.index, x.row, x.result)
+    );
+
     save();
     render();
     $("bulkout").classList.remove("hidden");
   } catch (e) {
     $("berr").textContent = e.message;
   } finally {
-    btn.disabled = false;
-    btn.textContent = "Analyze CSV";
-  }
-};
-
-/* DOWNLOAD RESULTS */
-function downloadFile(name,text) {
-  const a = document.createElement("a");
-  const url = URL.createObjectURL(new Blob([text],{type:"text/csv;charset=utf-8;"}));
-  a.href = url;
-  a.download = name;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(url),1000);
-}
-
-$("download").onclick = () => {
-  const csv = [
-    "row,amt,category,hour,day_of_week,fraud_probability,decision",
-    ...lastResults.map(x => [
-      x.index,
-      x.row.amt??x.row.Amount??x.row.amount??"",
-      x.row.category??"",
-      x.row.hour??"",
-      x.row.day_of_week??"",
-      x.result.probability,
-      x.result.decision
-    ].join(","))
-  ].join("\n");
-  downloadFile("fraud_results.csv",csv);
-};
-
-/* REVIEW QUEUE AND FEEDBACK */
-function decide(i,decision) {
-  const q = queue.splice(i,1)[0];
-  if (!q) return;
-
-  log.unshift({
-    time:new Date().toLocaleString(),
-    source:q.id,
-    p:q.p,
-    guess:q.p>=0.5?"fraud":"genuine",
-    decision
-  });
-  save();
-  render();
-}
-window.decide = decide;
-
-function render() {
-  $("count-queue").textContent = queue.length ? ` (${queue.length})` : "";
-
-  $("qlist").innerHTML = queue.map((q,i) =>
-    `<div class="item"><div><b>${q.id}</b><div class="mut">Amount: ${q.row.amt??q.row.Amount??q.row.amount??"n/a"} · Category: ${q.row.category??"n/a"} · Fraud probability: ${pct(q.p)}</div></div><div><button class="primary" onclick="decide(${i},'fraud')">Mark fraud</button><button class="secondary" onclick="decide(${i},'genuine')">Mark genuine</button></div></div>`
-  ).join("") || '<p class="mut">Nothing to review.</p>';
-
-  const matches = log.filter(x => x.guess===x.decision).length;
-
-  $("lstats").innerHTML = [
-    ["Decisions",log.length],
-    ["Matched model guess",log.length?Math.round(matches/log.length*100)+"%":"n/a"],
-    ["Waiting for review",queue.length]
-  ].map(x => `<div><b>${x[1]}</b>${x[0]}</div>`).join("");
-
-  $("ltb").innerHTML = log.map(x =>
-    `<tr><td>${x.time}</td><td>${x.source}</td><td>${pct(x.p)}</td><td>${x.guess}</td><td>${x.decision}</td><td>${x.guess===x.decision?"Yes":"No"}</td></tr>`
-  ).join("");
-
-  $("empty").classList.toggle("hidden",log.length>0);
-}
-
-$("logdownload").onclick = () => {
-  const csv = [
-    "time,source,probability,model_guess,reviewer_decision",
-    ...log.map(x => [
-      `"${String(x.time).replace(/"/g,'""')}"`,
-      `"${String(x.source).replace(/"/g,'""')}"`,
-      x.p,x.guess,x.decision
-    ].join(","))
-  ].join("\n");
-  downloadFile("feedback_log.csv",csv);
-};
-
-$("clear").onclick = () => {
-  if (confirm("Clear the feedback log?")) {
-    log = [];
-    save();
-    render();
-  }
-};
-
-/* MODEL STATUS */
-fetch("/api/predict")
-  .then(r => r.json())
-  .then(j => {
-    LOW = j.low;
-    HIGH = j.high;
-    $("status").textContent = `Model online · review band ${LOW*100}%–${HIGH*100}%`;
-  })
-  .catch(() => $("status").textContent = "Model offline");
-
-render();
-</script>
-</body>
-</html>
+    btn.disabled = fa
