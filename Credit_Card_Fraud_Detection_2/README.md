@@ -60,9 +60,3 @@ vercel --prod
 ## 5. Test the API
 Open `/api/predict` on the deployed domain. It should return `status: ok`, the two thresholds, and the expected features. Then test a single transaction and a CSV upload in the web page.
 
-## Important notes
-- Do not reuse the old ULB `fraud_model.joblib`; it expects `Time`, `Amount`, and `V1`–`V28`.
-- The new model expects `amt`, `category`, `hour`, and `day_of_week`.
-- The UI uses a small category dropdown; categories unseen during training are accepted by the one-hot encoder.
-- The review queue/feedback log from the original frontend was not included in this adapted frontend because the current requested UI is the simple input-and-result flow. The same model review thresholds remain.
-- Do not claim performance numbers until the new training script has actually run and produced its metrics.
