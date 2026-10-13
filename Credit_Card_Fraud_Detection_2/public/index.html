@@ -1,79 +1,698 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Credit Card Fraud Detection</title>
-<script type="text/javascript" src="https://gc.kis.v2.scr.kaspersky-labs.com/FD126C42-EBFA-4E12-B309-BB3FDD723AC1/main.js?attr=vj5rNJtCXkxvS-lsQOFPfdDhH4ZHoh6s98VVJ1862lHcFVaylDB7eMfcctuWkM_EFi5Qm3dSXQ2FqulwsNj9JTknFQ1TOUd7Sxzy7EJeP_im_b__eV0P0cUGWvy7SAy9mJnJOxU8sry4vE8U-vQTgG-KLJqLcxAFD51OQYAWBRaNVUwuJWtC9wD-xc9AFmeVJ2slIljBqB0Pn-lcu1RsoBaFJwo7IyjB7y_r8GvEzGrdZwka5tPFEcxDbLc-qXdSW8H1K-v7vEcPTxv0yrN4IT3g7yzoPF23wSEirYXR-UsQV64bJO0AgkjhWbYJCnOY" charset="UTF-8"></script><style>
+<style>
 :root{--bg:#f3f5f8;--sf:#fff;--ink:#172033;--mut:#5b687b;--line:#dce2ec;--blue:#2447d6;--fraud:#c4261d;--review:#a96a00;--ok:#17794d}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,Arial,sans-serif}
-header,main{max-width:950px;margin:auto;padding:0 18px}header{padding-top:25px}h1{font-size:clamp(26px,5vw,38px);margin:0}h2{font-size:20px;margin:0}
-header p,.mut{color:var(--mut)}nav{display:flex;gap:5px;overflow-x:auto;border-bottom:1px solid var(--line)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,Arial,sans-serif}
+header,main{max-width:950px;margin:auto;padding:0 18px}
+header{padding-top:25px}
+h1{font-size:clamp(26px,5vw,38px);margin:0}
+h2{font-size:20px;margin:0}
+header p,.mut{color:var(--mut)}
+nav{display:flex;gap:5px;overflow-x:auto;border-bottom:1px solid var(--line)}
 nav button{background:none;color:var(--mut);border:0;border-bottom:3px solid transparent;padding:11px 13px;white-space:nowrap;font:inherit;cursor:pointer}
 nav button[aria-selected=true]{color:var(--ink);border-color:var(--blue);font-weight:650}
-section{display:none;padding:22px 0 50px}section.on{display:block}.box{background:var(--sf);border:1px solid var(--line);border-radius:11px;padding:18px;margin-bottom:15px}
+section{display:none;padding:22px 0 50px}
+section.on{display:block}
+.box{background:var(--sf);border:1px solid var(--line);border-radius:11px;padding:18px;margin-bottom:15px}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin:12px 0}
-label{display:block;font-size:13px;color:var(--mut);margin-bottom:4px}input,select{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:7px;background:var(--bg);color:var(--ink);font:inherit}
+label{display:block;font-size:13px;color:var(--mut);margin-bottom:4px}
+input,select{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:7px;background:var(--bg);color:var(--ink);font:inherit}
 button.primary,button.secondary{border-radius:7px;padding:9px 14px;font:inherit;cursor:pointer;margin:5px 5px 0 0}
-button.primary{background:var(--blue);color:white;border:0}button.secondary{background:transparent;color:var(--ink);border:1px solid var(--line)}
-button:disabled{opacity:.5}.tag{display:inline-block;border-radius:6px;padding:3px 9px;color:white;font-weight:650}.fraud{background:var(--fraud)}.review{background:var(--review)}.genuine{background:var(--ok)}
-.result{padding:14px;background:var(--bg);border-radius:8px;margin-top:14px}.hidden{display:none!important}.err{color:var(--fraud)}
-.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:14px}.stats div{background:var(--sf);border:1px solid var(--line);padding:12px;border-radius:9px}.stats b{display:block;font-size:22px}
+button.primary{background:var(--blue);color:white;border:0}
+button.secondary{background:transparent;color:var(--ink);border:1px solid var(--line)}
+button:disabled{opacity:.5}
+.tag{display:inline-block;border-radius:6px;padding:3px 9px;color:white;font-weight:650}
+.fraud{background:var(--fraud)}
+.review{background:var(--review)}
+.genuine{background:var(--ok)}
+.result{padding:14px;background:var(--bg);border-radius:8px;margin-top:14px}
+.hidden{display:none!important}
+.err{color:var(--fraud)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:14px}
+.stats div{background:var(--sf);border:1px solid var(--line);padding:12px;border-radius:9px}
+.stats b{display:block;font-size:22px}
 .chart-layout{display:flex;align-items:center;gap:26px;flex-wrap:wrap;margin-top:16px}
 .pie-chart{width:190px;height:190px;max-width:65vw;max-height:65vw;border-radius:50%;background:conic-gradient(#17794d 0deg 120deg,#c4261d 120deg 240deg,#a96a00 240deg 360deg);border:1px solid var(--line);flex:none}
 .pie-legend{display:grid;gap:10px;min-width:180px}
 .legend-item{display:flex;align-items:center;gap:9px}
 .legend-dot{width:12px;height:12px;border-radius:3px;display:inline-block;flex:none}
 .legend-item strong{margin-left:auto;padding-left:18px}
-
-.wrap{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;padding:8px;border-bottom:1px solid var(--line)}th{color:var(--mut)}
+.wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:8px;border-bottom:1px solid var(--line)}
+th{color:var(--mut)}
 .item{display:flex;gap:12px;justify-content:space-between;align-items:center;flex-wrap:wrap;padding:12px 0;border-top:1px solid var(--line)}
 @media(max-width:600px){header,main{padding-left:12px;padding-right:12px}.box{padding:14px}}
-</style></head><body>
-<header><h1>Credit Card Fraud Detection</h1><p>Score a transaction or upload a CSV. Uncertain cases go to a person instead of being decided automatically.</p><p><span id="status" class="mut">Checking model...</span></p><nav id="nav" role="tablist"></nav></header>
+</style>
+</head>
+<body>
+
+<header>
+<h1>Credit Card Fraud Detection</h1>
+<p>Score a transaction or upload a CSV. Uncertain cases go to a person instead of being decided automatically.</p>
+<p><span id="status" class="mut">Checking model...</span></p>
+<nav id="nav" role="tablist"></nav>
+</header>
+
 <main>
-<section id="single" class="on"><div class="box"><h2>Single transaction check</h2><p class="mut">Enter the selected readable features used by the model.</p>
+<section id="single" class="on">
+<div class="box">
+<h2>Single transaction check</h2>
+<p class="mut">Enter the selected readable features used by the model.</p>
+
 <div class="grid">
-<div><label for="amt">Amount</label><input id="amt" type="number" min="0" step="any" value="120.50"></div>
-<div><label for="category">Transaction category</label><select id="category"><option>grocery_pos</option><option>shopping_pos</option><option>shopping_net</option><option>misc_net</option><option>gas_transport</option><option>food_dining</option><option>entertainment</option><option>personal_care</option><option>health_fitness</option><option>home</option><option>kids_pets</option><option>travel</option><option>misc_pos</option><option>grocery_net</option></select></div>
-<div><label>Transaction time (24-hour format)</label><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><select id="timeHour" aria-label="Hour (00–23)"></select><select id="timeMinute" aria-label="Minute (00–59)"></select></div></div>
-<div><label for="day">Day of week</label><select id="day"><option value="0">Monday</option><option value="1">Tuesday</option><option value="2" selected>Wednesday</option><option value="3">Thursday</option><option value="4">Friday</option><option value="5">Saturday</option><option value="6">Sunday</option></select></div>
-</div><button class="primary" id="check">Check transaction</button><button class="secondary" id="sample">Load sample</button><span id="serr" class="err"></span><div id="result" class="result hidden"></div></div></section>
-<section id="bulk"><div class="box"><h2>Bulk CSV analysis</h2><p class="mut">Upload the new dataset format, or a CSV with <code>amt</code>, <code>category</code>, <code>hour</code>, and <code>day_of_week</code>. If the timestamp is present, the API derives hour and day of week.</p><input id="file" type="file" accept=".csv"><button class="primary" id="bulkbtn">Analyze CSV</button><span id="berr" class="err"></span></div>
-<div id="bulkout" class="hidden"><div class="stats" id="stats"></div><div class="box"><h2>Transaction decision breakdown</h2><div class="chart-layout"><div id="pieChart" class="pie-chart" role="img" aria-label="Pie chart of genuine, fraud, and review decisions"></div><div id="pieLegend" class="pie-legend"></div></div></div><div class="box"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><h2>Flagged and uncertain rows</h2><button class="secondary" id="download">Download all results</button></div><div class="wrap"><table><thead><tr><th>Row</th><th>Amount</th><th>Category</th><th>Fraud probability</th><th>Decision</th></tr></thead><tbody id="btb"></tbody></table></div></div></div></section>
-<section id="queue"><div class="box"><h2>Review queue</h2><p class="mut">Transactions in the middle probability band wait for a human decision. Decisions are saved in this browser.</p><div id="qlist"></div></div></section>
-<section id="log"><div class="stats" id="lstats"></div><div class="box"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><h2>Feedback log</h2><span><button class="secondary" id="logdownload">Download CSV</button><button class="secondary" id="clear">Clear</button></span></div><div class="wrap"><table><thead><tr><th>Time</th><th>Source</th><th>Probability</th><th>Model's guess</th><th>Reviewer decision</th><th>Matched?</th></tr></thead><tbody id="ltb"></tbody></table></div><p id="empty" class="mut">No decisions yet.</p></div></section>
-<section id="about"><div class="box"><h2>How it works</h2><ol><li><b>Score:</b> Random Forest estimates fraud probability from amount, category, hour, and day of week.</li><li><b>Decide:</b> at or below 20% is labelled genuine; at or above 80% is labelled fraud; values in between go to review.</li><li><b>Review:</b> reviewer decisions are recorded in this browser's feedback log. They do not automatically retrain the model.</li></ol></div><div class="box"><h2>Dataset and limitations</h2><p>Kartik2112's Kaggle dataset is simulated transaction data. The selected fields are readable, but predictions depend only on these selected features. Do not treat results as actual bank decisions.</p><p id="metrics" class="mut">Model performance will be shown after training metrics are generated. Do not reuse the old ULB model's scores.</p></div></section>
+<div>
+<label for="amt">Amount</label>
+<input id="amt" type="number" min="0" step="any" value="120.50">
+</div>
+
+<div>
+<label for="category">Transaction category</label>
+<select id="category">
+<option>grocery_pos</option>
+<option>shopping_pos</option>
+<option>shopping_net</option>
+<option>misc_net</option>
+<option>gas_transport</option>
+<option>food_dining</option>
+<option>entertainment</option>
+<option>personal_care</option>
+<option>health_fitness</option>
+<option>home</option>
+<option>kids_pets</option>
+<option>travel</option>
+<option>misc_pos</option>
+<option>grocery_net</option>
+</select>
+</div>
+
+<div>
+<label>Transaction time (24-hour format)</label>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+<select id="timeHour" aria-label="Hour (00–23)"></select>
+<select id="timeMinute" aria-label="Minute (00–59)"></select>
+</div>
+</div>
+
+<div>
+<label for="day">Day of week</label>
+<select id="day">
+<option value="0">Monday</option>
+<option value="1">Tuesday</option>
+<option value="2" selected>Wednesday</option>
+<option value="3">Thursday</option>
+<option value="4">Friday</option>
+<option value="5">Saturday</option>
+<option value="6">Sunday</option>
+</select>
+</div>
+</div>
+
+<button class="primary" id="check">Check transaction</button>
+<button class="secondary" id="sample">Load sample 1/10</button>
+<span id="serr" class="err"></span>
+<div id="result" class="result hidden"></div>
+</div>
+</section>
+
+<section id="bulk">
+<div class="box">
+<h2>Bulk CSV analysis</h2>
+<p class="mut">Upload the new dataset format, or a CSV with amt, category, hour, and day_of_week. If the timestamp is present, the API derives hour and day of week.</p>
+<input id="file" type="file" accept=".csv">
+<button class="primary" id="bulkbtn">Analyze CSV</button>
+<span id="berr" class="err"></span>
+</div>
+
+<div id="bulkout" class="hidden">
+<div class="stats" id="stats"></div>
+
+<div class="box">
+<h2>Transaction decision breakdown</h2>
+<div class="chart-layout">
+<div id="pieChart" class="pie-chart" role="img" aria-label="Pie chart of genuine, fraud, and review decisions"></div>
+<div id="pieLegend" class="pie-legend"></div>
+</div>
+</div>
+
+<div class="box">
+<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap">
+<h2>Flagged and uncertain rows</h2>
+<button class="secondary" id="download">Download all results</button>
+</div>
+<div class="wrap">
+<table>
+<thead>
+<tr>
+<th>Row</th>
+<th>Amount</th>
+<th>Category</th>
+<th>Fraud probability</th>
+<th>Decision</th>
+</tr>
+</thead>
+<tbody id="btb"></tbody>
+</table>
+</div>
+</div>
+</div>
+</section>
+
+<section id="queue">
+<div class="box">
+<h2>Review queue</h2>
+<p class="mut">Transactions in the middle probability band wait for a human decision. Decisions are saved in this browser.</p>
+<div id="qlist"></div>
+</div>
+</section>
+
+<section id="log">
+<div class="stats" id="lstats"></div>
+<div class="box">
+<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap">
+<h2>Feedback log</h2>
+<span>
+<button class="secondary" id="logdownload">Download CSV</button>
+<button class="secondary" id="clear">Clear</button>
+</span>
+</div>
+<div class="wrap">
+<table>
+<thead>
+<tr>
+<th>Time</th>
+<th>Source</th>
+<th>Probability</th>
+<th>Model's guess</th>
+<th>Reviewer decision</th>
+<th>Matched?</th>
+</tr>
+</thead>
+<tbody id="ltb"></tbody>
+</table>
+</div>
+<p id="empty" class="mut">No decisions yet.</p>
+</div>
+</section>
 </main>
+
 <script>
-const $=id=>document.getElementById(id);
-const tabs=[["single","Single check"],["bulk","Bulk analysis"],["queue","Review queue"],["log","Feedback log"],["about","How it works"]];
-$("nav").innerHTML=tabs.map(([id,name])=>`<button role="tab" data-tab="${id}" aria-selected="${id==="single"}">${name}<span id="count-${id}"></span></button>`).join("");
-$("nav").onclick=e=>{const b=e.target.closest("button[data-tab]");if(!b)return;document.querySelectorAll("main section").forEach(s=>s.classList.toggle("on",s.id===b.dataset.tab));document.querySelectorAll("nav button").forEach(x=>x.setAttribute("aria-selected",x===b))};
-let LOW=.2,HIGH=.8,lastResults=[],queue=load("fraud-review-queue"),log=load("fraud-feedback-log");
-function load(k){try{return JSON.parse(localStorage.getItem(k))||[]}catch(e){return []}}
-function save(){localStorage.setItem("fraud-review-queue",JSON.stringify(queue));localStorage.setItem("fraud-feedback-log",JSON.stringify(log))}
-function label(d){return d==="fraud"?"Likely fraud":d==="genuine"?"Looks genuine":"Needs review"}
-function pct(p){return (p*100).toFixed(2)+"%"}
-for(let h=0;h<24;h++)$("timeHour").add(new Option(String(h).padStart(2,"0"),String(h)));
-for(let m=0;m<60;m++)$("timeMinute").add(new Option(String(m).padStart(2,"0"),String(m)));
-$("timeHour").value="14";$("timeMinute").value="00";
-function inputRow(){const hour=Number($("timeHour").value);const minute=Number($("timeMinute").value);return {amt:Number($("amt").value),category:$("category").value,hour,minute,day_of_week:Number($("day").value)}}
-async function predict(rows){const r=await fetch("/api/predict",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({rows})});const j=await r.json();if(!r.ok)throw Error(j.error||"Prediction failed");LOW=j.low;HIGH=j.high;return j.results}
-function addReview(id,row,result){if(result.decision==="review")queue.push({id,row,p:result.probability})}
-$("check").onclick=async()=>{const row=inputRow();$("serr").textContent="";if(!Number.isFinite(row.amt)||row.amt<0||!Number.isInteger(row.hour)||row.hour<0||row.hour>23||!Number.isInteger(row.day_of_week)||row.day_of_week<0||row.day_of_week>6){$("serr").textContent="Enter a valid amount, time and day.";return}
-$("check").disabled=true;$("result").classList.remove("hidden");$("result").textContent="Checking...";
-try{const [r]=await predict([row]);$("result").innerHTML=`<span class="tag ${r.decision}">${label(r.decision)}</span><p><b>Fraud probability: ${pct(r.probability)}</b></p><p>${r.decision==="review"?"A person should review this transaction.":r.decision==="fraud"?"Flag this transaction for review.":"The model classified this transaction as likely genuine."}</p>`;addReview("Single check "+new Date().toLocaleString(),row,r);save();render()}
-catch(e){$("result").textContent=e.message}finally{$("check").disabled=false}};
-let sampleRows=[],sampleIndex=0;
-function parseCSV(text){const lines=text.trim().split(/\r?\n/);if(lines.length<2)throw Error("CSV contains no transaction rows.");const parse=line=>{let a=[],s="",q=false;for(let i=0;i<line.length;i++){let c=line[i];if(c==='"'&&line[i+1]==='"'){s+='"';i++}else if(c==='"')q=!q;else if(c===","&&!q){a.push(s);s=""}else s+=c}a.push(s);return a};const h=parse(lines[0]).map(k=>k.trim());return lines.slice(1).filter(Boolean).map(l=>{const v=parse(l),o={};h.forEach((k,i)=>o[k]=v[i]);return o})}
-$("sample").onclick=async()=>{const btn=$("sample");const msg=$("serr");msg.textContent="";btn.disabled=true;try{if(!sampleRows.length){const r=await fetch("sample_transactions.csv?v="+Date.now(),{cache:"no-store"});if(!r.ok)throw Error("Could not load sample_transactions.csv from public/.");sampleRows=parseCSV(await r.text());if(!sampleRows.length)throw Error("Sample CSV contains no transaction rows.");sampleIndex=0;}const o=sampleRows[sampleIndex%sampleRows.length];sampleIndex=(sampleIndex+1)%sampleRows.length;const amount=o.amt??o.Amount??o.amount;if(amount!==undefined)$("amt").value=amount;if(o.category){const cat=$("category");if(![...cat.options].some(opt=>opt.value===o.category||opt.text===o.category)){cat.add(new Option(o.category,o.category));}cat.value=o.category;}const hour=Number(o.hour??0);$("timeHour").value=String(Math.max(0,Math.min(23,hour))).padStart(2,"0");$("timeMinute").value=String(Math.max(0,Math.min(59,Number(o.minute??0))).toString()).padStart(2,"0");const day=Number(o.day_of_week??o.day??0);$("day").value=String(Math.max(0,Math.min(6,day)));msg.textContent=`Loaded sample transaction ${((sampleIndex+sampleRows.length-1)%sampleRows.length)+1} of ${sampleRows.length}.`;btn.textContent="Load next sample";}catch(e){msg.textContent=e.message;}finally{btn.disabled=false;}};
-$("bulkbtn").onclick=async()=>{const f=$("file").files[0];$("berr").textContent="";if(!f){$("berr").textContent="Choose a CSV file.";return}try{const rows=parseCSV(await f.text());const results=[];for(let i=0;i<rows.length;i+=1000)results.push(...await predict(rows.slice(i,i+1000)));lastResults=rows.map((row,i)=>({row,result:results[i],index:i+1}));const counts={fraud:0,genuine:0,review:0};results.forEach(r=>counts[r.decision]++);$("stats").innerHTML=[["Transactions checked",rows.length],["Looks genuine",counts.genuine],["Likely fraud",counts.fraud],["Needs review",counts.review]].map(x=>`<div><b>${x[1]}</b>${x[0]}</div>`).join("");const total=counts.genuine+counts.fraud+counts.review;const genuineDeg=total?counts.genuine/total*360:0;const fraudDeg=total?(counts.genuine+counts.fraud)/total*360:genuineDeg;$("pieChart").style.background=total?`conic-gradient(var(--ok) 0deg ${genuineDeg}deg,var(--fraud) ${genuineDeg}deg ${fraudDeg}deg,var(--review) ${fraudDeg}deg 360deg)`:"conic-gradient(var(--line) 0deg 360deg)";$("pieChart").setAttribute("aria-label",`Decision breakdown: ${counts.genuine} genuine, ${counts.fraud} fraud, ${counts.review} needs review`);$("pieLegend").innerHTML=[["genuine","Looks genuine",counts.genuine,"var(--ok)"],["fraud","Likely fraud",counts.fraud,"var(--fraud)"],["review","Needs review",counts.review,"var(--review)"]].map(([key,name,n,color])=>`<div class="legend-item"><span class="legend-dot" style="background:${color}"></span><span>${name}</span><strong>${n} · ${total?Math.round(n/total*100):0}%</strong></div>`).join("");$("btb").innerHTML=lastResults.filter(x=>x.result.decision!=="genuine").sort((a,b)=>b.result.probability-a.result.probability).slice(0,100).map(x=>`<tr><td>${x.index}</td><td>${x.row.amt??x.row.Amount??""}</td><td>${x.row.category??""}</td><td>${pct(x.result.probability)}</td><td><span class="tag ${x.result.decision}">${label(x.result.decision)}</span></td></tr>`).join("")||'<tr><td colspan="5">Nothing flagged.</td></tr>';lastResults.forEach(x=>addReview(f.name+" row "+x.index,x.row,x.result));save();render();$("bulkout").classList.remove("hidden")}catch(e){$("berr").textContent=e.message}};
-$("download").onclick=()=>{const csv=["row,amt,category,hour,day_of_week,fraud_probability,decision",...lastResults.map(x=>[x.index,x.row.amt??"",x.row.category??"",x.row.hour??"",x.row.day_of_week??"",x.result.probability,x.result.decision].join(","))].join("\n");downloadFile("fraud_results.csv",csv)};
-function decide(i,h){const q=queue.splice(i,1)[0];log.unshift({time:new Date().toLocaleString(),source:q.id,p:q.p,guess:q.p>=.5?"fraud":"genuine",decision:h});save();render()}
-function render(){$("count-queue").textContent=queue.length?` (${queue.length})`:"";$("qlist").innerHTML=queue.map((q,i)=>`<div class="item"><div><b>${q.id}</b><div class="mut">Amount: ${q.row.amt??q.row.Amount??"n/a"} · Category: ${q.row.category??"n/a"} · Fraud probability: ${pct(q.p)}</div></div><div><button class="primary" onclick="decide(${i},'fraud')">Mark fraud</button><button class="secondary" onclick="decide(${i},'genuine')">Mark genuine</button></div></div>`).join("")||'<p class="mut">Nothing to review.</p>';
-const matches=log.filter(x=>x.guess===x.decision).length;$("lstats").innerHTML=[["Decisions",log.length],["Matched model guess",log.length?Math.round(matches/log.length*100)+"%":"n/a"],["Waiting for review",queue.length]].map(x=>`<div><b>${x[1]}</b>${x[0]}</div>`).join("");$("ltb").innerHTML=log.map(x=>`<tr><td>${x.time}</td><td>${x.source}</td><td>${pct(x.p)}</td><td>${x.guess}</td><td>${x.decision}</td><td>${x.guess===x.decision?"Yes":"No"}</td></tr>`).join("");$("empty").classList.toggle("hidden",log.length>0)}
-window.decide=decide;
-function downloadFile(name,text){const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([text],{type:"text/csv"}));a.download=name;a.click()}
-$("logdownload").onclick=()=>downloadFile("feedback_log.csv",["time,source,probability,model_guess,reviewer_decision",...log.map(x=>[x.time,x.source,x.p,x.guess,x.decision].join(","))].join("\n"));
-$("clear").onclick=()=>{if(confirm("Clear the feedback log?")){log=[];save();render()}};
-fetch("/api/predict").then(r=>r.json()).then(j=>{LOW=j.low;HIGH=j.high;$("status").textContent=`Model online · review band ${LOW*100}%–${HIGH*100}%`}).catch(()=>$("status").textContent="Model offline");
+const $ = id => document.getElementById(id);
+
+const tabs = [
+  ["single", "Single check"],
+  ["bulk", "Bulk analysis"],
+  ["queue", "Review queue"],
+  ["log", "Feedback log"]
+];
+
+$("nav").innerHTML = tabs.map(([id, name]) =>
+  `<button role="tab" data-tab="${id}" aria-selected="${id === "single"}">${name}<span id="count-${id}"></span></button>`
+).join("");
+
+$("nav").onclick = e => {
+  const b = e.target.closest("button[data-tab]");
+  if (!b) return;
+
+  document.querySelectorAll("main section").forEach(s =>
+    s.classList.toggle("on", s.id === b.dataset.tab)
+  );
+
+  document.querySelectorAll("nav button").forEach(x =>
+    x.setAttribute("aria-selected", x === b)
+  );
+};
+
+let LOW = 0.2;
+let HIGH = 0.8;
+let lastResults = [];
+let queue = load("fraud-review-queue");
+let log = load("fraud-feedback-log");
+
+function load(k) {
+  try {
+    const value = JSON.parse(localStorage.getItem(k));
+    return Array.isArray(value) ? value : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function save() {
+  try {
+    localStorage.setItem("fraud-review-queue", JSON.stringify(queue));
+    localStorage.setItem("fraud-feedback-log", JSON.stringify(log));
+  } catch (e) {
+    console.warn("Could not save feedback in this browser.", e);
+  }
+}
+
+function label(d) {
+  return d === "fraud" ? "Likely fraud" :
+         d === "genuine" ? "Looks genuine" :
+         "Needs review";
+}
+
+function pct(p) {
+  return (p * 100).toFixed(2) + "%";
+}
+
+for (let h = 0; h < 24; h++) {
+  $("timeHour").add(new Option(String(h).padStart(2, "0"), String(h)));
+}
+
+for (let m = 0; m < 60; m++) {
+  $("timeMinute").add(new Option(String(m).padStart(2, "0"), String(m)));
+}
+
+$("timeHour").value = "14";
+$("timeMinute").value = "00";
+
+function inputRow() {
+  return {
+    amt: Number($("amt").value),
+    category: $("category").value,
+    hour: Number($("timeHour").value),
+    minute: Number($("timeMinute").value),
+    day_of_week: Number($("day").value)
+  };
+}
+
+async function predict(rows) {
+  const r = await fetch("/api/predict", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({rows})
+  });
+
+  const j = await r.json();
+
+  if (!r.ok) {
+    throw Error(j.error || "Prediction failed");
+  }
+
+  LOW = j.low;
+  HIGH = j.high;
+
+  return j.results;
+}
+
+function addReview(id, row, result) {
+  if (result.decision === "review") {
+    queue.push({
+      id,
+      row,
+      p: result.probability
+    });
+  }
+}
+
+$("check").onclick = async () => {
+  const row = inputRow();
+  $("serr").textContent = "";
+
+  if (
+    !Number.isFinite(row.amt) ||
+    row.amt < 0 ||
+    !Number.isInteger(row.hour) ||
+    row.hour < 0 ||
+    row.hour > 23 ||
+    !Number.isInteger(row.day_of_week) ||
+    row.day_of_week < 0 ||
+    row.day_of_week > 6
+  ) {
+    $("serr").textContent = "Enter a valid amount, time and day.";
+    return;
+  }
+
+  $("check").disabled = true;
+  $("result").classList.remove("hidden");
+  $("result").textContent = "Checking...";
+
+  try {
+    const [r] = await predict([row]);
+
+    $("result").innerHTML =
+      `<span class="tag ${r.decision}">${label(r.decision)}</span>
+       <p><b>Fraud probability: ${pct(r.probability)}</b></p>
+       <p>${r.decision === "review"
+          ? "A person should review this transaction."
+          : r.decision === "fraud"
+          ? "Flag this transaction for review."
+          : "The model classified this transaction as likely genuine."}</p>`;
+
+    addReview("Single check " + new Date().toLocaleString(), row, r);
+    save();
+    render();
+  } catch (e) {
+    $("result").textContent = e.message;
+  } finally {
+    $("check").disabled = false;
+  }
+};
+
+/* BUILT-IN SAMPLE TRANSACTIONS
+   These are demonstration inputs, not verified fraud cases.
+   The button cycles through all 10 without fetching a CSV.
+*/
+const sampleRows = [
+  {amt:12.50, category:"grocery_pos",     hour:9,  minute:15, day_of_week:1},
+  {amt:245.80,category:"shopping_net",    hour:14, minute:30, day_of_week:2},
+  {amt:850.00,category:"misc_net",        hour:2,  minute:10, day_of_week:5},
+  {amt:32.40, category:"gas_transport",   hour:18, minute:45, day_of_week:3},
+  {amt:1250.00,category:"shopping_net",   hour:1,  minute:20, day_of_week:6},
+  {amt:18.75, category:"grocery_pos",     hour:11, minute:5,  day_of_week:4},
+  {amt:430.20,category:"travel",          hour:23, minute:50, day_of_week:0},
+  {amt:67.90, category:"entertainment",   hour:16, minute:25, day_of_week:2},
+  {amt:520.00,category:"misc_net",        hour:3,  minute:40, day_of_week:5},
+  {amt:9.99,  category:"grocery_pos",     hour:8,  minute:0,  day_of_week:1}
+];
+
+let sampleIndex = 0;
+
+$("sample").onclick = () => {
+  const msg = $("serr");
+  const btn = $("sample");
+
+  msg.textContent = "";
+
+  try {
+    const idx = sampleIndex;
+    const s = sampleRows[idx];
+
+    $("amt").value = s.amt;
+
+    const categorySelect = $("category");
+    const exists = [...categorySelect.options].some(
+      option => option.value === s.category
+    );
+
+    if (!exists) {
+      categorySelect.add(new Option(s.category, s.category));
+    }
+
+    categorySelect.value = s.category;
+    $("timeHour").value = String(s.hour).padStart(2, "0");
+    $("timeMinute").value = String(s.minute).padStart(2, "0");
+    $("day").value = String(s.day_of_week);
+
+    sampleIndex = (sampleIndex + 1) % sampleRows.length;
+
+    msg.textContent =
+      `Loaded sample ${idx + 1} of ${sampleRows.length}.`;
+
+    btn.textContent =
+      `Load sample (${sampleIndex + 1}/${sampleRows.length})`;
+  } catch (e) {
+    msg.textContent = "Could not load sample: " + e.message;
+  }
+};
+
+/* CSV PARSER FOR BULK ANALYSIS */
+function parseCSV(text) {
+  const lines = text.replace(/^\uFEFF/, "").trim().split(/\r?\n/);
+
+  if (lines.length < 2) {
+    throw Error("CSV contains no transaction rows.");
+  }
+
+  const parse = line => {
+    const values = [];
+    let value = "";
+    let quoted = false;
+
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i];
+
+      if (c === '"' && line[i + 1] === '"') {
+        value += '"';
+        i++;
+      } else if (c === '"') {
+        quoted = !quoted;
+      } else if (c === "," && !quoted) {
+        values.push(value);
+        value = "";
+      } else {
+        value += c;
+      }
+    }
+
+    values.push(value);
+    return values;
+  };
+
+  const headers = parse(lines[0]).map(k => k.trim());
+
+  return lines.slice(1)
+    .filter(line => line.trim())
+    .map(line => {
+      const values = parse(line);
+      const row = {};
+      headers.forEach((key, i) => {
+        row[key] = values[i] ?? "";
+      });
+      return row;
+    });
+}
+
+/* BULK CSV ANALYSIS */
+$("bulkbtn").onclick = async () => {
+  const f = $("file").files[0];
+  $("berr").textContent = "";
+
+  if (!f) {
+    $("berr").textContent = "Choose a CSV file.";
+    return;
+  }
+
+  const btn = $("bulkbtn");
+  btn.disabled = true;
+  btn.textContent = "Analyzing...";
+
+  try {
+    const rows = parseCSV(await f.text());
+    const results = [];
+
+    for (let i = 0; i < rows.length; i += 1000) {
+      results.push(...await predict(rows.slice(i, i + 1000)));
+    }
+
+    if (results.length !== rows.length) {
+      throw Error("The API returned an unexpected number of results.");
+    }
+
+    lastResults = rows.map((row, i) => ({
+      row,
+      result: results[i],
+      index: i + 1
+    }));
+
+    const counts = {fraud: 0, genuine: 0, review: 0};
+    results.forEach(r => {
+      if (counts[r.decision] !== undefined) counts[r.decision]++;
+    });
+
+    $("stats").innerHTML = [
+      ["Transactions checked", rows.length],
+      ["Looks genuine", counts.genuine],
+      ["Likely fraud", counts.fraud],
+      ["Needs review", counts.review]
+    ].map(x => `<div><b>${x[1]}</b>${x[0]}</div>`).join("");
+
+    const total = rows.length;
+    const genuineDeg = total ? counts.genuine / total * 360 : 0;
+    const fraudDeg = total
+      ? (counts.genuine + counts.fraud) / total * 360
+      : genuineDeg;
+
+    $("pieChart").style.background = total
+      ? `conic-gradient(var(--ok) 0deg ${genuineDeg}deg,
+          var(--fraud) ${genuineDeg}deg ${fraudDeg}deg,
+          var(--review) ${fraudDeg}deg 360deg)`
+      : "conic-gradient(var(--line) 0deg 360deg)";
+
+    $("pieChart").setAttribute(
+      "aria-label",
+      `Decision breakdown: ${counts.genuine} genuine, ${counts.fraud} fraud, ${counts.review} needs review`
+    );
+
+    $("pieLegend").innerHTML = [
+      ["Looks genuine", counts.genuine, "var(--ok)"],
+      ["Likely fraud", counts.fraud, "var(--fraud)"],
+      ["Needs review", counts.review, "var(--review)"]
+    ].map(([name, n, color]) =>
+      `<div class="legend-item">
+        <span class="legend-dot" style="background:${color}"></span>
+        <span>${name}</span>
+        <strong>${n} · ${total ? Math.round(n / total * 100) : 0}%</strong>
+      </div>`
+    ).join("");
+
+    $("btb").innerHTML = lastResults
+      .filter(x => x.result.decision !== "genuine")
+      .sort((a, b) => b.result.probability - a.result.probability)
+      .slice(0, 100)
+      .map(x =>
+        `<tr>
+          <td>${x.index}</td>
+          <td>${x.row.amt ?? x.row.Amount ?? x.row.amount ?? ""}</td>
+          <td>${x.row.category ?? ""}</td>
+          <td>${pct(x.result.probability)}</td>
+          <td><span class="tag ${x.result.decision}">${label(x.result.decision)}</span></td>
+        </tr>`
+      ).join("") || '<tr><td colspan="5">Nothing flagged.</td></tr>';
+
+    lastResults.forEach(x =>
+      addReview(f.name + " row " + x.index, x.row, x.result)
+    );
+
+    save();
+    render();
+    $("bulkout").classList.remove("hidden");
+
+  } catch (e) {
+    $("berr").textContent = e.message;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Analyze CSV";
+  }
+};
+
+/* DOWNLOAD BULK RESULTS */
+$("download").onclick = () => {
+  const csv = [
+    "row,amt,category,hour,day_of_week,fraud_probability,decision",
+    ...lastResults.map(x => [
+      x.index,
+      x.row.amt ?? x.row.Amount ?? x.row.amount ?? "",
+      x.row.category ?? "",
+      x.row.hour ?? "",
+      x.row.day_of_week ?? "",
+      x.result.probability,
+      x.result.decision
+    ].join(","))
+  ].join("\n");
+
+  downloadFile("fraud_results.csv", csv);
+};
+
+/* HUMAN REVIEW QUEUE */
+function decide(i, h) {
+  const q = queue.splice(i, 1)[0];
+  if (!q) return;
+
+  log.unshift({
+    time: new Date().toLocaleString(),
+    source: q.id,
+    p: q.p,
+    guess: q.p >= 0.5 ? "fraud" : "genuine",
+    decision: h
+  });
+
+  save();
+  render();
+}
+
+function render() {
+  $("count-queue").textContent = queue.length ? ` (${queue.length})` : "";
+
+  $("qlist").innerHTML = queue.map((q, i) =>
+    `<div class="item">
+      <div>
+        <b>${q.id}</b>
+        <div class="mut">
+          Amount: ${q.row.amt ?? q.row.Amount ?? q.row.amount ?? "n/a"}
+          · Category: ${q.row.category ?? "n/a"}
+          · Fraud probability: ${pct(q.p)}
+        </div>
+      </div>
+      <div>
+        <button class="primary" onclick="decide(${i},'fraud')">Mark fraud</button>
+        <button class="secondary" onclick="decide(${i},'genuine')">Mark genuine</button>
+      </div>
+    </div>`
+  ).join("") || '<p class="mut">Nothing to review.</p>';
+
+  const matches = log.filter(x => x.guess === x.decision).length;
+
+  $("lstats").innerHTML = [
+    ["Decisions", log.length],
+    ["Matched model guess", log.length ? Math.round(matches / log.length * 100) + "%" : "n/a"],
+    ["Waiting for review", queue.length]
+  ].map(x => `<div><b>${x[1]}</b>${x[0]}</div>`).join("");
+
+  $("ltb").innerHTML = log.map(x =>
+    `<tr>
+      <td>${x.time}</td>
+      <td>${x.source}</td>
+      <td>${pct(x.p)}</td>
+      <td>${x.guess}</td>
+      <td>${x.decision}</td>
+      <td>${x.guess === x.decision ? "Yes" : "No"}</td>
+    </tr>`
+  ).join("");
+
+  $("empty").classList.toggle("hidden", log.length > 0);
+}
+
+window.decide = decide;
+
+/* DOWNLOAD HELPER */
+function downloadFile(name, text) {
+  const a = document.createElement("a");
+  const url = URL.createObjectURL(
+    new Blob([text], {type: "text/csv;charset=utf-8;"})
+  );
+
+  a.href = url;
+  a.download = name;
+  a.click();
+
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+$("logdownload").onclick = () => {
+  const csv = [
+    "time,source,probability,model_guess,reviewer_decision",
+    ...log.map(x => [
+      x.time,
+      `"${String(x.source).replace(/"/g, '""')}"`,
+      x.p,
+      x.guess,
+      x.decision
+    ].join(","))
+  ].join("\n");
+
+  downloadFile("feedback_log.csv", csv);
+};
+
+$("clear").onclick = () => {
+  if (confirm("Clear the feedback log?")) {
+    log = [];
+    save();
+    render();
+  }
+};
+
+/* CHECK MODEL STATUS */
+fetch("/api/predict")
+  .then(r => r.json())
+  .then(j => {
+    LOW = j.low;
+    HIGH = j.high;
+    $("status").textContent =
+      `Model online · review band ${LOW * 100}%–${HIGH * 100}%`;
+  })
+  .catch(() => {
+    $("status").textContent = "Model offline";
+  });
+
 render();
-</script></body></html>
+</script>
+</body>
+</html>
