@@ -431,8 +431,6 @@ $("sample").onclick = async () => {
     $("day").value = String(
       Math.max(0,Math.min(6,Number(day)||0))
     );
-
-    msg.textContent = "Sample loaded.";
   } catch (e) {
     msg.textContent = e.message;
   } finally {
